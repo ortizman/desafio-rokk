@@ -1,0 +1,12 @@
+{
+  "shop": {
+    "host": "localhost",
+    "port": 3306,
+    "url": "",
+    "database": "shop",
+    "password": "root",
+    "name": "shop",
+    "user": "root",
+    "connector": "mysql"
+  }
+}
