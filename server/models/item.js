@@ -46,6 +46,44 @@ module.exports = (Item) => {
         });
     };
 
+    Item.postItem = (data, req, callback) => {
+        // Start the transaction
+        Item.beginTransaction({
+            isolationLevel: Item.Transaction.READ_COMMITTED,
+        }, (err, tx) => {
+
+            Item.app.models.Product.findById(data.productId, {
+                transaction: tx,
+            }, (err, prod) => {
+                if(err) {
+                    console.log(err);
+                    tx.rollback((err) => {
+                        callback(err);
+                    });
+                }
+                if(prod.stockamount >= data.count) {
+                    Item.create(data, {
+                        transaction: tx,
+                    }, (err, item) => {
+
+                        if(err) {
+                            console.log(err);
+                            tx.rollback((err) => {
+                                callback(err);
+                            });
+                        }
+
+                        updateProduct(prod, data.count, data.count, tx, callback);
+                    })
+                } else {
+                    callback("There is no stock available");
+                }
+            });
+
+
+        });
+    }
+
     Item.remoteMethod('increase', {
         accepts: [
             { arg: 'id', type: 'number', description: 'Item id', required: true, http: { source: 'path' } },
@@ -54,7 +92,18 @@ module.exports = (Item) => {
         returns: { arg: 'count', type: 'number' },
         http: { path: '/:id/count', verb: 'patch' }
     });
+
+    Item.remoteMethod('postItem', {
+        accepts: [
+            { arg: 'data', type: 'object', http: { source: 'body' } },
+            { arg: 'req', type: 'object', 'http': { source: 'req' } }
+        ],
+        returns: { arg: 'response', type: 'string', root: true },
+        http: { path: '//', verb: 'POST' }
+    });
 };
+
+
 
 function updateItem(item, prod, inc, tx, callback) {
     let itemTotal = item.count + inc;
