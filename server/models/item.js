@@ -25,25 +25,23 @@ module.exports = (Item) => {
                     return callback("You can not have products in negative quantities")
                 }
 
-                item.updateAttributes({
-                    count: inc,
-                }, {
-                        transaction: tx,
-                    }, (err, newData) => {
-                        if (err) {
-                            console.log(err);
-                            return tx.rollback((err) => {
-                                callback(err);
-                            });
-                        }
+                Item.app.models.Product.findById(item.productId, {
+                    transaction: tx,
+                }, (err, prod) => {
 
-                        // Commit the transaction to make it happen
-                        tx.commit((err) => {
-                            if (err) return callback(err);
-                            // count should have been incremented
-                            callback(null, item.count);
+                    if(err) {
+                        console.log(err);
+                        tx.rollback((err) => {
+                            callback(err);
                         });
-                    });
+                    }
+                    if(prod.stockamount >= increase) {
+                        updateItem(item, prod, increase, tx, callback);
+                    } else {
+                        callback("There is no stock available");
+                    }
+                });
+
             });
         });
     };
@@ -57,3 +55,44 @@ module.exports = (Item) => {
         http: { path: '/:id/count', verb: 'patch' }
     });
 };
+
+function updateItem(item, prod, inc, tx, callback) {
+    let itemTotal = item.count + inc;
+    item.updateAttributes({
+        count: itemTotal,
+    }, {
+            transaction: tx,
+        }, (err, newData) => {
+            if (err) {
+                console.log(err);
+                return tx.rollback((err) => {
+                    callback(err);
+                });
+            }
+            updateProduct(prod, itemTotal, inc, tx, callback)
+        });
+}
+
+
+function updateProduct(prod, itemTotal, increase, tx, callback) {
+    prod.updateAttributes({
+        stockamount: prod.stockamount - increase,
+    }, {
+            transaction: tx,
+        }, (err, newData) => {
+            if (err) {
+                console.log(err);
+                return tx.rollback((err) => {
+                    callback(err);
+                });
+            }
+            // Commit the transaction to make it happen
+            tx.commit((err) => {
+                if (err)
+                    return callback(err);
+                // count should have been incremented
+                callback(null, itemTotal);
+            });
+        });
+}
+
