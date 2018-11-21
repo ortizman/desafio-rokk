@@ -21,6 +21,10 @@ module.exports = (Item) => {
                 // Increment the count as part of the transaction
                 var inc = item.count + increase;
 
+                if(inc < 0) {
+                    return callback("You can not have products in negative quantities")
+                }
+
                 item.updateAttributes({
                     count: inc,
                 }, {
@@ -50,6 +54,6 @@ module.exports = (Item) => {
             { arg: 'count', type: 'number', http: { source: 'body' } }
         ],
         returns: { arg: 'count', type: 'number' },
-        http: { path: '/:id/increase', verb: 'patch' }
+        http: { path: '/:id/count', verb: 'patch' }
     });
 };
